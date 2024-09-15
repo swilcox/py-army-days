@@ -1,7 +1,7 @@
 [project]
-name = "py-army-days"
-version = "0.1.0"
-description = "Add your description here"
+name = "army-days"
+version = "0.2.0"
+description = "day countdown program (python edition)"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = ["click>=8.1.7", "pydantic>=2.9.1", "pyyaml>=6.0.2"]
@@ -14,7 +14,7 @@ build-backend = "hatchling.build"
 dev-dependencies = ["freezegun>=1.5.1", "pytest-cov>=5.0.0", "pytest>=8.3.3"]
 
 [project.scripts]
-army-days = "py_army_days.cli:main"
+army-days = "army_days.cli:main"
 
 [tool.ruff]
 line-length = 120

@@ -4,8 +4,8 @@ import json
 
 from freezegun import freeze_time
 
-from py_army_days.core import compute_results
-from py_army_days.output import _output_color_events, _output_json_events
+from army_days.core import compute_results
+from army_days.output import _output_color_events, _output_json_events
 
 
 @freeze_time("2024-08-05T13:00:00")

@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from py_army_days.models import ConfigModel, DaysModel, EntryModel
+from army_days.models import ConfigModel, DaysModel, EntryModel
 
 
 def test_config_model():

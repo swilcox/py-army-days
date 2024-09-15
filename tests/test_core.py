@@ -1,6 +1,6 @@
 from freezegun import freeze_time
 
-from py_army_days.core import compute_results
+from army_days.core import compute_results
 
 
 @freeze_time("2024-08-05T13:00:00")

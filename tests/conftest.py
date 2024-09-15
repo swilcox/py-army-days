@@ -2,7 +2,7 @@ from datetime import datetime
 
 import pytest
 
-from py_army_days.models import ConfigModel, DaysModel, EntryModel
+from army_days.models import ConfigModel, DaysModel, EntryModel
 
 
 @pytest.fixture
