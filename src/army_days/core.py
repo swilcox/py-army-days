@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from .models import ComputedEventModel, DaysModel
+from .models import ComputedEventModel, ConfigModel, DaysModel, EntryModel
 
 
 def compute_results(days: DaysModel) -> list[ComputedEventModel]:
@@ -18,3 +18,17 @@ def compute_results(days: DaysModel) -> list[ComputedEventModel]:
             results.append(new_computed_event)
     results.sort(key=lambda x: x.date)
     return results
+
+
+def generate_default_configuration() -> DaysModel:
+    now = datetime.now()
+    if now.month == 2 and now.day == 29:
+        new_date = datetime(now.year + 1, 3, 1)
+    else:
+        new_date = datetime(now.year + 1, now.month, now.day)
+    return DaysModel(
+        config=ConfigModel(),
+        entries=[
+            EntryModel(title="your one year anniversary of using army-days", date=new_date),
+        ],
+    )
