@@ -1,7 +1,11 @@
 import os
 import sys
+from dataclasses import dataclass
+from importlib.metadata import version
+from pathlib import Path
+from typing import Annotated
 
-import click
+import cappa
 import yaml
 import yaml.scanner
 from pydantic_core import ValidationError
@@ -13,28 +17,24 @@ from .output import output_events
 from .utils import find_default_config_file
 
 
-@click.command()
-@click.version_option()
-@click.option(
-    "-f",
-    "--filename",
-    type=click.Path(),
-    default="",
-    help=f"configuration file; by default searches: {"\n".join(DEFAULT_CONFIG_FILES)}.",
-)
-@click.option(
-    "-g",
-    "--generate-sample",
-    is_flag=True,
-    show_default=True,
-    default=False,
-    help="generate sample data in yaml format (sends to stdout).",
-)
-def main(filename, generate_sample):
-    if generate_sample:
+@dataclass
+class Arguments:
+    filename: Annotated[
+        Path | None,
+        cappa.Arg(
+            short=True, long=True, help=f"configuration file; by default searches: {"\n".join(DEFAULT_CONFIG_FILES)}."
+        ),
+    ] = None
+    generate_sample: Annotated[bool, cappa.Arg(long=True, help="generate a sample YAML file", show_default=False)] = (
+        False
+    )
+
+
+def _main(args: Arguments):
+    if args.generate_sample:
         print(yaml.dump(generate_default_configuration().model_dump(mode="json")))
     else:
-        config_filename = filename or find_default_config_file()
+        config_filename = args.filename or find_default_config_file()
         if not config_filename or not os.path.exists(config_filename):
             sys.stderr.write(f"\nConfiguration file: '{config_filename}' not found.\n")
             sys.exit(1)
@@ -45,3 +45,11 @@ def main(filename, generate_sample):
                 sys.stderr.write(f"\nError parsing configuration file: {file.name} error: {ex}\n")
                 sys.exit(1)
             output_events(compute_results(data))
+
+
+def main():
+    _main(cappa.parse(Arguments, backend=cappa.backend, version=version(__package__)))
+
+
+if __name__ == "__main__":
+    main()
