@@ -22,12 +22,19 @@ class Arguments:
     filename: Annotated[
         Path | None,
         cappa.Arg(
-            short=True, long=True, help=f"configuration file; by default searches: {"\n".join(DEFAULT_CONFIG_FILES)}."
+            short=True,
+            long=True,
+            help=f"configuration file; by default searches: {"\n".join(DEFAULT_CONFIG_FILES)}.",
         ),
     ] = None
-    generate_sample: Annotated[bool, cappa.Arg(long=True, help="generate a sample YAML file", show_default=False)] = (
-        False
-    )
+    generate_sample: Annotated[
+        bool,
+        cappa.Arg(
+            long=True,
+            show_default=False,
+            help="generate a sample YAML file",
+        ),
+    ] = False
 
 
 def _main(args: Arguments):
