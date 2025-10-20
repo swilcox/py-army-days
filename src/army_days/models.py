@@ -11,6 +11,8 @@ class ConfigModel(BaseModel):
 class EntryModel(BaseModel):
     title: str
     date: datetime
+    always_show: bool = Field(default=False, alias="alwaysShow")
+    show_past_limit: int | None = Field(default=None, alias="showPastLimit")
 
 
 class DaysModel(BaseModel):
