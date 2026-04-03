@@ -172,3 +172,105 @@ def test_generate_default_configuration_includes_past_event():
     assert past_event.always_show is True
     assert past_event.show_past_limit == 400
     assert past_event.date == datetime(2023, 8, 5)
+
+
+@freeze_time("2024-08-05T13:00:00")
+def test_max_days_future_filtering(standard_test_config):
+    """Test that max_days_future filters future events beyond the limit"""
+    # Item 5 is 2030-01-01, which is ~1975 days away
+    # Item 1 is 2024-12-12, which is 129 days away
+    standard_test_config.config.max_days_future = 200
+    results = compute_results(standard_test_config)
+
+    # Item 5 should be filtered out (> 200 days)
+    assert not any(event.title == "Item 5" for event in results)
+    # Item 1 should be included (129 days < 200)
+    assert any(event.title == "Item 1" for event in results)
+    # Should have 3 future events within 200 days
+    assert len(results) == 3
+
+
+@freeze_time("2024-08-05T13:00:00")
+def test_show_all_bypasses_max_days_future(standard_test_config):
+    """Test that show_all_future=True bypasses max_days_future filtering"""
+    standard_test_config.config.max_days_future = 200
+    results = compute_results(standard_test_config, show_all_future=True)
+
+    # Item 5 should now be included even though it's > 200 days
+    assert any(event.title == "Item 5" for event in results)
+    # All 4 future events should be included
+    assert len(results) == 4
+
+
+@freeze_time("2024-08-05T13:00:00")
+def test_max_days_future_boundary(standard_test_config):
+    """Test max_days_future boundary condition (exactly at limit should be included)"""
+    # Item 1 is 129 days away
+    standard_test_config.config.max_days_future = 129
+    results = compute_results(standard_test_config)
+
+    # Item 1 at exactly 129 days should be included (not greater than)
+    assert any(event.title == "Item 1" for event in results)
+
+
+@freeze_time("2024-08-05T13:00:00")
+def test_display_format_per_event_override(standard_test_config):
+    """Test that per-event display_format overrides global default"""
+    standard_test_config.config.default_display_format = "days"
+    standard_test_config.entries[0].display_format = "weeks"
+
+    results = compute_results(standard_test_config)
+    item1 = next(e for e in results if e.title == "Item 1")
+
+    # Item 1 should use weeks format (per-event override)
+    assert item1.display_format_resolved == "weeks"
+
+
+@freeze_time("2024-08-05T13:00:00")
+def test_display_format_global_default(standard_test_config):
+    """Test that events without display_format use global default"""
+    standard_test_config.config.default_display_format = "months"
+
+    results = compute_results(standard_test_config)
+    item1 = next(e for e in results if e.title == "Item 1")
+
+    # Item 1 should use months format (global default)
+    assert item1.display_format_resolved == "months"
+
+
+@freeze_time("2024-08-05T13:00:00")
+def test_display_format_auto_resolution(standard_test_config):
+    """Test that auto format is resolved based on time delta"""
+    standard_test_config.config.default_display_format = "auto"
+
+    results = compute_results(standard_test_config)
+    # Item 2 is today (0 days) -> should be "days"
+    item2 = next(e for e in results if e.title == "Item 2")
+    assert item2.display_format_resolved == "days"
+
+    # Item 1 is 129 days away -> should be "months" (90-729 days)
+    item1 = next(e for e in results if e.title == "Item 1")
+    assert item1.display_format_resolved == "months"
+
+
+@freeze_time("2024-08-05T13:00:00")
+def test_display_format_auto_per_event(standard_test_config):
+    """Test that per-event auto format resolves correctly"""
+    standard_test_config.config.default_display_format = "days"
+    standard_test_config.entries[0].display_format = "auto"  # Item 1, 129 days away
+
+    results = compute_results(standard_test_config)
+    item1 = next(e for e in results if e.title == "Item 1")
+
+    # Should auto-resolve to "months" (129 days is in 90-729 range)
+    assert item1.display_format_resolved == "months"
+
+
+@freeze_time("2024-08-05T13:00:00")
+def test_generate_default_configuration_includes_new_fields():
+    """Test that generate_default_configuration includes new display format fields"""
+    config = generate_default_configuration()
+    assert config.config.default_display_format == "days"
+    assert config.config.max_days_future is None
+    assert config.entries[0].display_format is None
+    assert config.entries[1].display_format is None

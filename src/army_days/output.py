@@ -1,5 +1,6 @@
 import json
 import sys
+from datetime import datetime
 
 from .ansi_text import (
     RESET,
@@ -7,6 +8,7 @@ from .ansi_text import (
     rgb_background,
     rgb_foreground,
 )
+from .date_formatting import calculate_time_components, format_time_string
 from .models import ComputedEventModel
 
 BG_BLACK = rgb_background(0, 0, 0)
@@ -23,22 +25,47 @@ def _output_json_events(events: list[ComputedEventModel]):
 def _output_color_events(events: list[ComputedEventModel]):
     lines = []
     longest_line = HEADING
+
+    # Get current date for calculations
+    now = datetime.now()
+    current = datetime(now.year, now.month, now.day)
+
     for event in events:
-        string_days = (
-            f"{abs(event.days):.0f}" if float(int(event.days)) == event.days else f"{abs(event.days):.0f} and a butt"
+        # Determine direction
+        if event.days == 0:
+            direction = "today"
+        elif event.days > 0:
+            direction = "until"
+        else:
+            direction = "since"
+
+        # Calculate components based on format type
+        event_date = datetime(event.date.year, event.date.month, event.date.day)
+        is_butt = (event.days % 1 == 0.5)
+
+        # For days and weeks formats, use simple day arithmetic
+        # For months and years, use calendar-accurate relativedelta
+        if event.display_format_resolved in ("days", "weeks"):
+            # Use simple day count
+            total_days = int(abs(event.days))
+            weeks = total_days // 7
+            days = total_days % 7
+
+            from .date_formatting import TimeComponents
+
+            components = TimeComponents(
+                years=0, months=0, weeks=weeks, days=days, is_butt=is_butt, is_negative=(event.days < 0)
+            )
+        else:
+            # Use calendar-accurate calculation for months/years
+            components = calculate_time_components(start_date=current, end_date=event_date, is_butt=is_butt)
+
+        # Format using resolved format
+        time_string = format_time_string(
+            components=components, format_type=event.display_format_resolved, direction=direction
         )
-        match event.days:
-            case 0:
-                string_days = "Today is"
-            case 1:
-                string_days += " day until"
-            case -1:
-                string_days += " day since"
-            case days if days > 0:
-                string_days += " days until"
-            case days if days < 0:
-                string_days += " days since"
-        line = f"{string_days} {event.title}."
+
+        line = f"{time_string} {event.title}."
         if len(line) > len(longest_line):
             longest_line = line
         lines.append(line)

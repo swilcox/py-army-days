@@ -1,9 +1,12 @@
 from datetime import datetime
 
+from .date_formatting import determine_auto_format
 from .models import ComputedEventModel, ConfigModel, DaysModel, EntryModel
 
 
-def compute_results(days: DaysModel, show_past_days: int | None = None) -> list[ComputedEventModel]:
+def compute_results(
+    days: DaysModel, show_past_days: int | None = None, show_all_future: bool = False
+) -> list[ComputedEventModel]:
     results = []
     now = datetime.now()
     current = datetime(now.year, now.month, now.day)
@@ -11,14 +14,40 @@ def compute_results(days: DaysModel, show_past_days: int | None = None) -> list[
         tmp_date = entry.date.astimezone()  # force it to local time
         event_date = datetime(tmp_date.year, tmp_date.month, tmp_date.day)
         time_delta = (event_date - current).days
-        new_computed_event = ComputedEventModel(title=entry.title, date=tmp_date, days=time_delta)
+
+        # Apply max_days_future filtering for future events
+        if time_delta > 0 and not show_all_future:
+            if days.config.max_days_future is not None:
+                if time_delta > days.config.max_days_future:
+                    continue  # Skip this event
+
+        # Calculate days value (with "and a butt" logic)
+        days_value = float(time_delta)
         if time_delta > 0 and days.config.use_army_butt_days and now.hour >= 12:
-            new_computed_event.days -= 0.5
+            days_value -= 0.5
+
+        # Resolve display format: per-event override or global default
+        resolved_format = entry.display_format or days.config.default_display_format
+
+        # If "auto", determine based on time delta
+        if resolved_format == "auto":
+            resolved_format = determine_auto_format(days_value)
+
+        # Create computed event with resolved format
+        new_computed_event = ComputedEventModel(
+            title=entry.title,
+            date=tmp_date,
+            days=days_value,
+            always_show=entry.always_show,
+            show_past_limit=entry.show_past_limit,
+            display_format=entry.display_format,
+            display_format_resolved=resolved_format,
+        )
 
         # Determine if we should include this event
         should_show = False
 
-        # Always show future events
+        # Always show future events (they passed max_days_future filter if applicable)
         if time_delta >= 0:
             should_show = True
         # Past events: check various conditions
@@ -61,14 +90,20 @@ def generate_default_configuration() -> DaysModel:
         past_date = datetime(now.year - 1, now.month, now.day)
 
     return DaysModel(
-        config=ConfigModel(),
+        config=ConfigModel(
+            use_army_butt_days=False,
+            show_completed=False,
+            default_display_format="days",
+            max_days_future=None,
+        ),
         entries=[
-            EntryModel(title="your one year anniversary of using army-days", date=new_date),
+            EntryModel(title="your one year anniversary of using army-days", date=new_date, display_format=None),
             EntryModel(
                 title="example always-shown event (e.g., 'broke my leg')",
                 date=past_date,
                 always_show=True,
                 show_past_limit=400,
+                display_format=None,
             ),
         ],
     )
