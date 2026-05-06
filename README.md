@@ -25,19 +25,24 @@ Once installed, you can run the command with the `--help` option.
 
 ```shell
 ❯ army-days --help
-Usage: army-days [OPTIONS]
+Usage: army-days [-f FILENAME] [-g] [-p SHOW_PAST] [-a] [-h] [-v]
 
-Options:
-  --version                Show the version and exit.
-  -f, --filename PATH      configuration file; by default searches:
-                           ./days.yaml ./days.json ~/days.yaml ~/days.json
-                           ~/.days.yaml ~/.days.json.
-  -g, --generate-sample    generate sample data in yaml format (sends to
-                           stdout).
-  -p, --show-past INTEGER  show past events; optionally limit to events within
-                           the past X days (e.g., --show-past or --show-past
-                           365).
-  --help                   Show this message and exit.
+  day countdown program (python edition)
+
+  Options
+    [-f, --filename FILENAME]    configuration file; by default searches:
+                                 ./days.yaml ./days.json ~/days.yaml
+                                 ~/days.json ~/.days.yaml ~/.days.json.
+    [-g, --generate-sample]      generate sample data in yaml format (sends to
+                                 stdout).
+    [-p, --show-past SHOW_PAST]  show past events within the past N days (use 0
+                                 to show all past events).
+    [-a, --show-all]             show all future events, bypassing
+                                 max_days_future config limit.
+
+  Help
+    [-h, --help]                 Show this message and exit.
+    [-v, --version]              Show the version and exit.
 ```
 
 ### Configuration / Input file
@@ -82,11 +87,11 @@ Army-days provides multiple ways to display past events:
 
 #### Command-line option
 
-Use the `-p` / `--show-past` flag to show past events:
+Use the `-p` / `--show-past` option to show past events. It always takes an integer day-limit; pass `0` to show *all* past events:
 
 ```shell
 # Show all past events
-army-days --show-past
+army-days --show-past 0
 
 # Show only past events within the last 365 days
 army-days --show-past 365
