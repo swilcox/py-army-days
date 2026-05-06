@@ -1,7 +1,10 @@
 import os
 import sys
+from dataclasses import dataclass
+from importlib.metadata import version as pkg_version
+from typing import Annotated
 
-import click
+import cappa
 import yaml
 import yaml.scanner
 from pydantic_core import ValidationError
@@ -13,52 +16,61 @@ from .output import output_events
 from .utils import find_default_config_file
 
 
-@click.command()
-@click.version_option()
-@click.option(
-    "-f",
-    "--filename",
-    type=click.Path(),
-    default="",
-    help=f"configuration file; by default searches: {"\n".join(DEFAULT_CONFIG_FILES)}.",
-)
-@click.option(
-    "-g",
-    "--generate-sample",
-    is_flag=True,
-    show_default=True,
-    default=False,
-    help="generate sample data in yaml format (sends to stdout).",
-)
-@click.option(
-    "-p",
-    "--show-past",
-    type=int,
-    is_flag=False,
-    flag_value=0,
-    default=None,
-    help="show past events; optionally limit to events within the past X days (e.g., --show-past or --show-past 365).",
-)
-@click.option(
-    "-a",
-    "--show-all",
-    is_flag=True,
-    show_default=True,
-    default=False,
-    help="show all future events, bypassing max_days_future config limit.",
-)
-def main(filename, generate_sample, show_past, show_all):
-    if generate_sample:
+def run(army_days: "ArmyDays") -> None:
+    if army_days.generate_sample:
         print(yaml.dump(generate_default_configuration().model_dump(mode="json")))
-    else:
-        config_filename = filename or find_default_config_file()
-        if not config_filename or not os.path.exists(config_filename):
-            sys.stderr.write(f"\nConfiguration file: '{config_filename}' not found.\n")
+        return
+    config_filename = army_days.filename or find_default_config_file()
+    if not config_filename or not os.path.exists(config_filename):
+        sys.stderr.write(f"\nConfiguration file: '{config_filename}' not found.\n")
+        sys.exit(1)
+    with open(config_filename) as file:
+        try:
+            data = DaysModel(**yaml.load(file.read().replace("\t", " "), yaml.SafeLoader))
+        except (yaml.scanner.ScannerError, yaml.error.YAMLError, ValidationError) as ex:
+            sys.stderr.write(f"\nError parsing configuration file: {file.name} error: {ex}\n")
             sys.exit(1)
-        with open(config_filename) as file:
-            try:
-                data = DaysModel(**yaml.load(file.read().replace("\t", " "), yaml.SafeLoader))
-            except (yaml.scanner.ScannerError, yaml.error.YAMLError, ValidationError) as ex:
-                sys.stderr.write(f"\nError parsing configuration file: {file.name} error: {ex}\n")
-                sys.exit(1)
-            output_events(compute_results(data, show_past_days=show_past, show_all_future=show_all))
+        output_events(
+            compute_results(data, show_past_days=army_days.show_past, show_all_future=army_days.show_all)
+        )
+
+
+@cappa.command(name="army-days", help="day countdown program (python edition)", invoke=run)
+@dataclass
+class ArmyDays:
+    filename: Annotated[
+        str,
+        cappa.Arg(
+            short="-f",
+            long="--filename",
+            help=f"configuration file; by default searches: {' '.join(DEFAULT_CONFIG_FILES)}.",
+        ),
+    ] = ""
+    generate_sample: Annotated[
+        bool,
+        cappa.Arg(
+            short="-g",
+            long="--generate-sample",
+            help="generate sample data in yaml format (sends to stdout).",
+        ),
+    ] = False
+    show_past: Annotated[
+        int | None,
+        cappa.Arg(
+            short="-p",
+            long="--show-past",
+            help="show past events within the past N days (use 0 to show all past events).",
+        ),
+    ] = None
+    show_all: Annotated[
+        bool,
+        cappa.Arg(
+            short="-a",
+            long="--show-all",
+            help="show all future events, bypassing max_days_future config limit.",
+        ),
+    ] = False
+
+
+def main() -> None:
+    cappa.invoke(ArmyDays, version=pkg_version("army-days"))

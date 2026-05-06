@@ -16,10 +16,13 @@ def compute_results(
         time_delta = (event_date - current).days
 
         # Apply max_days_future filtering for future events
-        if time_delta > 0 and not show_all_future:
-            if days.config.max_days_future is not None:
-                if time_delta > days.config.max_days_future:
-                    continue  # Skip this event
+        if (
+            time_delta > 0
+            and not show_all_future
+            and days.config.max_days_future is not None
+            and time_delta > days.config.max_days_future
+        ):
+            continue
 
         # Calculate days value (with "and a butt" logic)
         days_value = float(time_delta)
@@ -56,18 +59,15 @@ def compute_results(
             if days.config.show_completed:
                 should_show = True
 
-            # Check CLI parameter --show-past
-            if show_past_days is not None:
-                # If show_past_days is provided without a value, show all past events
-                # If it has a value, only show events within that many days in the past
-                if show_past_days == 0 or abs(time_delta) <= show_past_days:
-                    should_show = True
+            # Check CLI parameter --show-past (0 = show all past; otherwise only within N days)
+            if show_past_days is not None and (show_past_days == 0 or abs(time_delta) <= show_past_days):
+                should_show = True
 
-            # Check per-event always_show option
-            if entry.always_show:
-                # If show_past_limit is set, only show if within limit
-                if entry.show_past_limit is None or abs(time_delta) <= entry.show_past_limit:
-                    should_show = True
+            # Check per-event always_show option (show_past_limit caps how far back it applies)
+            if entry.always_show and (
+                entry.show_past_limit is None or abs(time_delta) <= entry.show_past_limit
+            ):
+                should_show = True
 
         if should_show:
             results.append(new_computed_event)
